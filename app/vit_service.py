@@ -18,6 +18,7 @@ _b0_model = None
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+B3_WEIGHTS_PTH = BASE_DIR / "efficientnet_b3_best.pth"
 B3_WEIGHTS_ZIP = BASE_DIR / "efficientnet_b3_best.pth.zip"
 B3_WEIGHTS_DIR = BASE_DIR / "efficientnet_b3_best"
 
@@ -108,7 +109,15 @@ def get_b3_model():
         m = models.efficientnet_b3(weights=None)
         m.classifier[1] = nn.Linear(1536, 2)
         
-        if not B3_WEIGHTS_ZIP.exists() and B3_WEIGHTS_DIR.exists():
+        if B3_WEIGHTS_PTH.exists():
+            sd = torch.load(str(B3_WEIGHTS_PTH), map_location=_device)
+            m.load_state_dict(sd)
+            print("EfficientNet-B3 initialized successfully from .pth weights!")
+        elif B3_WEIGHTS_ZIP.exists():
+            sd = torch.load(str(B3_WEIGHTS_ZIP), map_location=_device)
+            m.load_state_dict(sd)
+            print("EfficientNet-B3 initialized successfully from .zip archive!")
+        elif B3_WEIGHTS_DIR.exists():
             import zipfile
             with zipfile.ZipFile(B3_WEIGHTS_ZIP, 'w', compression=zipfile.ZIP_STORED) as zf:
                 for root, dirs, files in os.walk(B3_WEIGHTS_DIR):
@@ -116,11 +125,9 @@ def get_b3_model():
                         full_path = os.path.join(root, f)
                         rel_path = os.path.relpath(full_path, BASE_DIR)
                         zf.write(full_path, arcname=rel_path.replace('\\', '/'))
-        
-        if B3_WEIGHTS_ZIP.exists():
             sd = torch.load(str(B3_WEIGHTS_ZIP), map_location=_device)
             m.load_state_dict(sd)
-            print("EfficientNet-B3 initialized successfully!")
+            print("EfficientNet-B3 initialized successfully from directory archive!")
             
         m.to(_device)
         m.eval()

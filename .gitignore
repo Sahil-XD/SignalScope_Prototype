@@ -7,6 +7,9 @@
 efficientnet_b3_best/
 tinygenimage_*/
 
+# Allow the primary 41.3MB EfficientNet-B3 SOTA model directly in git for 1-click clone evaluation
+!efficientnet_b3_best.pth
+
 # Python cache & envs
 __pycache__/
 *.py[cod]
