@@ -571,6 +571,57 @@
             justify-content: space-between;
         }
 
+        /* Forensic Layer Tabs */
+        .forensic-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .forensic-tab-btn {
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sub);
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-line);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .forensic-tab-btn:hover {
+            background: rgba(140, 109, 52, 0.08);
+            color: var(--text-main);
+            border-color: rgba(140, 109, 52, 0.4);
+        }
+
+        .forensic-tab-btn.active {
+            background: #8C6D34;
+            color: #FFFFFF;
+            border-color: #8C6D34;
+            box-shadow: 0 2px 6px rgba(140, 109, 52, 0.25);
+        }
+
+        .layer-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.08);
+            color: inherit;
+        }
+
+        .forensic-tab-btn.active .layer-badge {
+            background: rgba(255, 255, 255, 0.22);
+            color: #FFFFFF;
+        }
+
         .heatmap-display-frame {
             position: relative;
             width: 100%;
@@ -1077,30 +1128,45 @@
                 <section class="studio-card center-stage-container">
                     <div>
                         <div class="card-header-line">
-                            <span class="card-title-text">Visual Saliency Map (Grad-CAM)</span>
+                            <span class="card-title-text" id="visualMapTitle">Visual Forensic Layers</span>
                             <span class="tag-pill"
-                                style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Headline Bonus A</span>
+                                style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Triple-Layer Bonus A</span>
+                        </div>
+
+                        <!-- Multi-Layer Forensic Tab Switcher -->
+                        <div class="forensic-tabs" id="forensicTabs">
+                            <button type="button" class="forensic-tab-btn active" id="tabGradCam" onclick="switchForensicLayer('gradcam')">
+                                <span>Grad-CAM Saliency</span>
+                            </button>
+                            <button type="button" class="forensic-tab-btn" id="tabEla" onclick="switchForensicLayer('ela')">
+                                <span>Error Level (ELA)</span>
+                                <span class="layer-badge">JPEG Δ</span>
+                            </button>
+                            <button type="button" class="forensic-tab-btn" id="tabNoise" onclick="switchForensicLayer('noise')">
+                                <span>Noise Residual</span>
+                                <span class="layer-badge">Sensor Grain</span>
+                            </button>
                         </div>
 
                         <!-- Image + Heatmap Display Frame -->
                         <div class="heatmap-display-frame">
                             <img id="resultImage" src="" alt="Inspected Target">
-                            <img id="resultHeatmap" class="heatmap-overlay-img" alt="Grad-CAM Saliency">
+                            <img id="resultHeatmap" class="heatmap-overlay-img" alt="Forensic Layer">
                             <canvas id="heatmapCanvas" width="900" height="500"></canvas>
                             <span class="file-watermark" id="stageWatermark">target_image.jpeg</span>
                         </div>
 
                         <!-- Opacity Slider -->
                         <div class="slider-control-bar">
-                            <label for="opacitySlider">Heatmap Opacity:</label>
+                            <label for="opacitySlider" id="opacitySliderLabel">Layer Opacity:</label>
                             <input type="range" class="opacity-slider" id="opacitySlider" min="0" max="100" value="65"
                                 oninput="setOpacity(this.value)">
                             <span class="opacity-val" id="opacityBadge">65%</span>
                         </div>
                     </div>
 
-                    <!-- Grounded Cues -->
-                    <div class="cues-strip">
+                    <!-- Grounded Cues (Measured Region Metrics) -->
+                    <div class="cues-strip" id="cuesStrip">
                         <div class="cue-item">
                             <span class="cue-dot"></span>
                             <span id="cue1">Attention localized on high-contrast physical boundaries.</span>
@@ -1202,6 +1268,56 @@
             }
         }
 
+        // Multi-Layer Forensic State (Bonus A)
+        let currentForensicData = {
+            gradcam: null,
+            ela: null,
+            noise: null
+        };
+        let activeForensicLayer = 'gradcam';
+
+        function switchForensicLayer(layer) {
+            activeForensicLayer = layer;
+            const heatmapImg = document.getElementById('resultHeatmap');
+            const canvas = document.getElementById('heatmapCanvas');
+            const sliderLabel = document.getElementById('opacitySliderLabel');
+
+            const tabGradCam = document.getElementById('tabGradCam');
+            const tabEla = document.getElementById('tabEla');
+            const tabNoise = document.getElementById('tabNoise');
+
+            if (tabGradCam) tabGradCam.classList.toggle('active', layer === 'gradcam');
+            if (tabEla) tabEla.classList.toggle('active', layer === 'ela');
+            if (tabNoise) tabNoise.classList.toggle('active', layer === 'noise');
+
+            if (layer === 'gradcam') {
+                if (sliderLabel) sliderLabel.innerText = 'Saliency Opacity:';
+                if (currentForensicData.gradcam) {
+                    heatmapImg.src = currentForensicData.gradcam;
+                    heatmapImg.style.display = 'block';
+                    canvas.style.display = 'none';
+                } else {
+                    heatmapImg.style.display = 'none';
+                    canvas.style.display = 'block';
+                    renderFallbackHeatmap();
+                }
+            } else if (layer === 'ela') {
+                if (sliderLabel) sliderLabel.innerText = 'ELA Opacity:';
+                if (currentForensicData.ela) {
+                    heatmapImg.src = currentForensicData.ela;
+                    heatmapImg.style.display = 'block';
+                    canvas.style.display = 'none';
+                }
+            } else if (layer === 'noise') {
+                if (sliderLabel) sliderLabel.innerText = 'Noise Residual Opacity:';
+                if (currentForensicData.noise) {
+                    heatmapImg.src = currentForensicData.noise;
+                    heatmapImg.style.display = 'block';
+                    canvas.style.display = 'none';
+                }
+            }
+        }
+
         // Opacity Slider handler
         function setOpacity(val) {
             const heatmapImg = document.getElementById('resultHeatmap');
@@ -1248,18 +1364,13 @@
             document.getElementById('targetFileName').innerText = filename || 'inspected_media.png';
             document.getElementById('stageWatermark').innerText = filename || 'inspected_media.png';
 
-            // Heatmap overlay
-            const heatmapImg = document.getElementById('resultHeatmap');
-            const canvas = document.getElementById('heatmapCanvas');
-            if (data.heatmap_base64) {
-                heatmapImg.src = data.heatmap_base64;
-                heatmapImg.style.display = 'block';
-                canvas.style.display = 'none';
-            } else {
-                heatmapImg.style.display = 'none';
-                canvas.style.display = 'block';
-                renderFallbackHeatmap();
-            }
+            // Cache Multi-Layer Forensic Overlays (Bonus A)
+            currentForensicData.gradcam = data.heatmap_base64 || null;
+            currentForensicData.ela = data.ela_base64 || null;
+            currentForensicData.noise = data.noise_base64 || null;
+
+            // Activate default Grad-CAM layer
+            switchForensicLayer('gradcam');
 
             // Status pill
             const pill = document.getElementById('statusPill');
@@ -1329,11 +1440,18 @@
             // Explanation note
             document.getElementById('verdictSummary').innerHTML = '<strong>Forensic Assessment:</strong> ' + (data.summary || '');
 
-            // Grounded cues
-            if (data.cues && data.cues.length >= 2) {
-                document.getElementById('cue1').innerText = data.cues[0];
-                document.getElementById('cue2').innerText = data.cues[1];
-                if (data.cues[2]) document.getElementById('cue3').innerText = data.cues[2];
+            // Grounded Forensic Cues (Measured Region Metrics - Bonus A)
+            const cuesToRender = (data.grounded_explanation && data.grounded_explanation.bullets && data.grounded_explanation.bullets.length > 0)
+                ? data.grounded_explanation.bullets
+                : (data.cues || []);
+            const cuesStrip = document.getElementById('cuesStrip');
+            if (cuesStrip && cuesToRender.length > 0) {
+                cuesStrip.innerHTML = cuesToRender.map(cue => `
+                    <div class="cue-item">
+                        <span class="cue-dot"></span>
+                        <span>${cue}</span>
+                    </div>
+                `).join('');
             }
 
             // EXIF metadata

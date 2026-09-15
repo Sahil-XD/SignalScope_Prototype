@@ -99,6 +99,11 @@ def main():
         print("-" * 60)
         print("MULTI-SIGNAL CALIBRATION APPLIED:")
         print(f"  Reason: {result.get('calibration_reason')}")
+    if result.get("cues"):
+        print("-" * 60)
+        print("GROUNDED FORENSIC REGION CUES (BONUS A):")
+        for cue in result.get("cues", []):
+            print(f"  * {cue}")
     print("-" * 60)
     print("SUMMARY:")
     print(f"  {result['summary']}")

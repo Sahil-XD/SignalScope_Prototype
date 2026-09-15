@@ -222,6 +222,37 @@ def analyze_image(image_path: str, simulate_jpeg: bool = False, model_type: str 
         real_prob = float(probs[1].item())
         
     heatmap_b64 = generate_vit_saliency_heatmap(model, tensor_input, orig_size)
+
+    # Triple-Layer Forensic Explanation Engine (Bonus A)
+    grounded_explanation = None
+    ela_base64 = None
+    noise_base64 = None
+    _pending_grounded = None
+    try:
+        from app.explain_service import (get_raw_saliency_map, compute_ela_map,
+            compute_noise_residual, extract_grounded_regions, generate_grounded_cues,
+            generate_ela_overlay, generate_noise_overlay)
+        raw_saliency = get_raw_saliency_map(model, tensor_input)
+        # Resize saliency to original image size
+        from PIL import Image as PILImage
+        raw_saliency_resized = np.array(PILImage.fromarray(
+            (raw_saliency * 255).astype(np.uint8)
+        ).resize(orig_size)) / 255.0
+        ela_map = compute_ela_map(img)
+        noise_map = compute_noise_residual(img)
+        regions_data = extract_grounded_regions(raw_saliency_resized, ela_map, noise_map, img)
+        # fft_data and verdict_status are computed below; defer cue generation
+        _pending_grounded = {
+            "regions_data": regions_data,
+            "ela_map": ela_map,
+            "noise_map": noise_map,
+        }
+        ela_base64 = generate_ela_overlay(img, ela_map)
+        noise_base64 = generate_noise_overlay(img, noise_map)
+    except Exception as e:
+        _pending_grounded = None
+        grounded_explanation = {"error": str(e), "fallback": True}
+
     raw_ai_pct = round(fake_prob * 100, 1)
     raw_real_pct = round(real_prob * 100, 1)
     display_score = raw_ai_pct
@@ -290,6 +321,19 @@ def analyze_image(image_path: str, simulate_jpeg: bool = False, model_type: str 
             "Visual features display mixed characteristics between compressed camera capture and AI synthesis."
         ]
 
+    # Finalize grounded explanation: generate cues now that verdict_status is known
+    if _pending_grounded is not None:
+        try:
+            from app.explain_service import generate_grounded_cues
+            regions_data = _pending_grounded["regions_data"]
+            grounded_cues = generate_grounded_cues(regions_data, fft_data, verdict_status)
+            # Override template cues with grounded cues
+            cues = grounded_cues
+            grounded_explanation = regions_data
+            grounded_explanation["bullets"] = grounded_cues
+        except Exception as e:
+            grounded_explanation = {"error": str(e), "fallback": True}
+
     return {
         "success": True,
         "model_name": model_display_name,
@@ -312,5 +356,8 @@ def analyze_image(image_path: str, simulate_jpeg: bool = False, model_type: str 
         "raw_probabilities": {
             "fake": fake_prob,
             "real": real_prob
-        }
+        },
+        "grounded_explanation": grounded_explanation,
+        "ela_base64": ela_base64,
+        "noise_base64": noise_base64,
     }
