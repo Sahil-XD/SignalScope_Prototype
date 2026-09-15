@@ -568,19 +568,20 @@
         .center-stage-container {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 10px;
         }
 
         /* Forensic Layer Tabs */
         .forensic-tabs {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .forensic-tab-btn {
             flex: 1;
-            padding: 8px 10px;
+            padding: 7px 10px;
             font-size: 11px;
             font-weight: 600;
             color: var(--text-sub);
@@ -625,7 +626,7 @@
         .heatmap-display-frame {
             position: relative;
             width: 100%;
-            height: 310px;
+            height: 250px;
             border-radius: 14px;
             overflow: hidden;
             background: #000000;
@@ -672,9 +673,9 @@
             gap: 12px;
             background: rgba(0, 0, 0, 0.02);
             border-radius: 12px;
-            padding: 7px 14px;
+            padding: 6px 14px;
             border: 1px solid var(--border-line);
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
         .slider-control-bar label {
@@ -1099,10 +1100,7 @@
 
                     <!-- Robustness Stress Test Toggles -->
                     <div class="info-group">
-                        <div class="group-label" style="display: flex; justify-content: space-between;">
-                            <span>Robustness Defense</span>
-                            <span class="tag-pill" style="font-size: 9px; padding: 2px 7px;">Active Defense</span>
-                        </div>
+                        <div class="group-label">Robustness Defense</div>
                         <div class="exif-list">
                             <div class="stress-row">
                                 <span>JPEG Compression (q=50)</span>
@@ -1149,7 +1147,7 @@
                             <span class="card-title-text" id="visualMapTitle">Visual Forensic Layers</span>
                             <div style="display: flex; gap: 6px; align-items: center;">
                                 <span class="tag-pill" id="stabilityBadge" style="background: rgba(16, 185, 129, 0.15); color: #059669;">Stability: High</span>
-                                <span class="tag-pill" style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Bonus A: Triple-Layer</span>
+                                <span class="tag-pill" style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Triple-Layer Forensics</span>
                             </div>
                         </div>
 
@@ -1185,17 +1183,14 @@
                         </div>
                     </div>
 
-                    <!-- Grounded Cues (Measured Region Metrics - Bonus A) -->
-                    <div class="grounded-cues-card" style="margin-top: 10px; padding: 10px 14px; background: rgba(0, 0, 0, 0.02); border-radius: 12px; border: 1px solid var(--border-line);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px;">
-                            <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">
+                    <!-- Grounded Cues (Measured Region Metrics) -->
+                    <div class="grounded-cues-card" style="margin-top: 6px; padding: 8px 12px; background: rgba(0, 0, 0, 0.02); border-radius: 10px; border: 1px solid var(--border-line);">
+                        <div style="margin-bottom: 5px;">
+                            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">
                                 Faithful Grounded Cues (Measured Regions)
                             </span>
-                            <span class="tag-pill" style="font-size: 9px; padding: 2px 7px; background: rgba(140, 109, 52, 0.15); color: #8C6D34;">
-                                Bonus A Evidence
-                            </span>
                         </div>
-                        <div class="cues-strip" id="cuesStrip" style="margin-top: 0;">
+                        <div class="cues-strip" id="cuesStrip" style="margin-top: 0; gap: 4px;">
                             <div class="cue-item">
                                 <span class="cue-dot"></span>
                                 <span id="cue1">Attention localized on high-contrast physical boundaries.</span>
