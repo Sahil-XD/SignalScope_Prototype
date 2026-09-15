@@ -93,11 +93,11 @@ echo [*] Using Python: "!PYTHON_EXE!"
 echo.
 echo [*] Checking dependencies...
 "!PYTHON_EXE!" -c "import fastapi, uvicorn, multipart, torch, torchvision, PIL, numpy, cv2" >nul 2>nul
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo [*] Some required packages are missing. Installing from requirements.txt...
-    echo [*] Running pip install (this may take a few moments)...
+    echo [*] Running pip install - this may take a few moments...
     "!PYTHON_EXE!" -m pip install -r requirements.txt
-    if %errorlevel% neq 0 (
+    if !errorlevel! neq 0 (
         echo.
         echo [*] Standard pip encountered an issue. Attempting CPU-optimized PyTorch fallback...
         "!PYTHON_EXE!" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
@@ -110,7 +110,7 @@ if %errorlevel% neq 0 (
 :: Check if port 8000 is occupied
 set "PORT=8000"
 netstat -ano | findstr /r ":8000 .*LISTENING" >nul 2>nul
-if %errorlevel% equ 0 (
+if !errorlevel! equ 0 (
     echo [*] Notice: Port 8000 is already in use by another process.
     echo [*] Switching to backup port 8001...
     set "PORT=8001"
@@ -127,7 +127,7 @@ start "" cmd /c "timeout /t 3 /nobreak >nul & start http://127.0.0.1:!PORT!"
 :: Start Uvicorn ASGI server
 "!PYTHON_EXE!" -m uvicorn app.main:app --host 127.0.0.1 --port !PORT!
 
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo.
     echo [ERROR] Server stopped with an error code.
     echo Check the messages above for details.
