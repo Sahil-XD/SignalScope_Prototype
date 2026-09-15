@@ -38,7 +38,7 @@ def main():
     parser.add_argument(
         "--jpeg-stress",
         action="store_true",
-        help="Simulate JPEG compression (q=50) for robustness testing (Bonus C)"
+        help="Simulate JPEG compression (q=50) for robustness testing"
     )
     parser.add_argument(
         "--json",
@@ -87,7 +87,7 @@ def main():
     print(f"Real Probability:  {result['raw_real_pct']}%")
     print(f"Operating Cutoff:  {result['operating_threshold']}% Threshold")
     print("-" * 60)
-    print("PROVENANCE & HARDWARE (BONUS D):")
+    print("PROVENANCE & HARDWARE (EXIF & SENSOR):")
     print(f"  Camera Hardware: {result['exif'].get('device_model', 'No EXIF Found')}")
     print(f"  Exposure:        {result['exif'].get('exposure_settings', 'No EXIF Found')}")
     print(f"  Sensor/Lens:     {result['exif'].get('lens_sensor', 'No EXIF Found')}")
@@ -101,7 +101,7 @@ def main():
         print(f"  Reason: {result.get('calibration_reason')}")
     if result.get("cues"):
         print("-" * 60)
-        print("GROUNDED FORENSIC REGION CUES (BONUS A):")
+        print("GROUNDED FORENSIC REGION CUES:")
         for cue in result.get("cues", []):
             print(f"  * {cue}")
     print("-" * 60)
