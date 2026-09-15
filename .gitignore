@@ -30,3 +30,8 @@ Thumbs.db
 %USERPROFILE%*
 .claude*
 .env
+
+# Incoming temporary folders
+final sih/
+SIH-2026-with-team-syndicate-main/
+incoming_aarnav/
