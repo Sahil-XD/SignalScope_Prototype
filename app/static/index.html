@@ -1133,10 +1133,14 @@
 
                         <div class="score-flex">
                             <div>
-                                <span class="score-sublabel">Primary Confidence</span>
+                                <span class="score-sublabel" id="scoreSublabel">Primary Confidence</span>
                                 <div class="score-big" id="verdictScore">--%</div>
                             </div>
-                            <span style="font-size: 11px; font-weight: 600; color: var(--text-sub);">Threshold: 70%</span>
+                            <span style="font-size: 11px; font-weight: 600; color: var(--text-sub);" id="thresholdLabel">Threshold: 70%</span>
+                        </div>
+
+                        <!-- Calibration Override Banner -->
+                        <div id="calibrationBanner" style="display: none; margin: 10px 0; padding: 8px 12px; background: rgba(217, 119, 6, 0.1); border-left: 3px solid #D97706; border-radius: 8px; font-size: 11.5px; color: #92400E; line-height: 1.4;">
                         </div>
 
                         <!-- Dual probability split -->
@@ -1262,10 +1266,47 @@
             pill.className = 'status-pill ' + (data.verdict_status || 'inconclusive');
             pill.innerText = data.verdict_title || 'Analyzed';
 
-            // Verdict headline
-            document.getElementById('verdictMainText').innerText = 
-                data.verdict_status === 'synthetic' ? 'AI Synthesis Signatures Detected' :
-                (data.verdict_status === 'authentic' ? 'Authentic Physical Camera Capture' : 'Inconclusive / Mixed Signals');
+            // Verdict headline & labels
+            const sublabel = document.getElementById('scoreSublabel');
+            const thrLabel = document.getElementById('thresholdLabel');
+            const calBanner = document.getElementById('calibrationBanner');
+
+            if (data.calibration_applied) {
+                document.getElementById('verdictMainText').innerText = 'Inconclusive / Smartphone Post-Processing';
+                if (sublabel) sublabel.innerText = 'Visual AI Score (Overridden)';
+                if (thrLabel) {
+                    thrLabel.innerText = 'Hardware Overridden';
+                    thrLabel.style.color = '#D97706';
+                }
+                if (calBanner) {
+                    calBanner.style.display = 'block';
+                    calBanner.innerHTML = '<strong>⚡ Multi-Signal Provenance Calibration:</strong> The visual model elevated AI uncertainty (' + data.raw_fake_pct + '%) due to smartphone computational ISP de-noising & sharpening. However, verified camera hardware EXIF and natural optical light decay confirm physical camera provenance, overriding the false-positive AI flag to <em>Inconclusive</em>.';
+                }
+            } else if (data.verdict_status === 'synthetic') {
+                document.getElementById('verdictMainText').innerText = 'AI Synthesis Signatures Detected';
+                if (sublabel) sublabel.innerText = 'AI Probability';
+                if (thrLabel) {
+                    thrLabel.innerText = 'Threshold: 70%';
+                    thrLabel.style.color = 'var(--text-sub)';
+                }
+                if (calBanner) calBanner.style.display = 'none';
+            } else if (data.verdict_status === 'authentic') {
+                document.getElementById('verdictMainText').innerText = 'Authentic Physical Camera Capture';
+                if (sublabel) sublabel.innerText = 'Authenticity Confidence';
+                if (thrLabel) {
+                    thrLabel.innerText = 'Cutoff: <35%';
+                    thrLabel.style.color = 'var(--text-sub)';
+                }
+                if (calBanner) calBanner.style.display = 'none';
+            } else {
+                document.getElementById('verdictMainText').innerText = 'Inconclusive / Mixed Signals';
+                if (sublabel) sublabel.innerText = 'Primary Confidence';
+                if (thrLabel) {
+                    thrLabel.innerText = 'Threshold: 70%';
+                    thrLabel.style.color = 'var(--text-sub)';
+                }
+                if (calBanner) calBanner.style.display = 'none';
+            }
 
             // Scores
             const displayScore = (data.verdict_status === 'synthetic') ? data.raw_fake_pct : 
