@@ -193,3 +193,84 @@ def check_caption_consistency(image_path: str, caption: str) -> dict:
 | User Experience | 10 | Clear verdict, responsible language, usability |
 | Problem Understanding | 10 | Generalisation grasp, honest limitations |
 | Presentation & Demo | 5 | 3-5 min video clarity |
+
+---
+
+## Gemini API Integration (Modules A & E)
+
+### Setup
+
+```bash
+pip install google-generativeai python-dotenv
+```
+
+```env
+# .env (ADD TO .gitignore!)
+GEMINI_API_KEY=AIzaSy...
+```
+
+```python
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-2.0-flash")
+```
+
+### Module A — Gemini-Enhanced Explanation
+
+Send image + Grad-CAM heatmap to Gemini Vision for grounded artifact descriptions:
+
+```python
+import PIL.Image
+img = PIL.Image.open(image_path)
+response = model.generate_content([
+    img,
+    "Analyze this image for signs of AI generation. "
+    "List specific visual artifacts you observe (texture, geometry, lighting, anatomy). "
+    "Use 'likely' not 'certain'. Be concise."
+])
+cues = response.text
+```
+
+### Module E — Gemini Image-Caption Consistency
+
+```python
+response = model.generate_content([
+    img,
+    f'Does this caption accurately describe this image? Caption: "{caption}". '
+    f'Rate consistency 0-100 and explain mismatches.'
+])
+```
+
+### Risk Assessment
+
+| Risk | Why It Matters |
+|---|---|
+| **Faithfulness** | Gemini can hallucinate artifacts — PDF rubric 4.3 penalizes "fluent but wrong" |
+| **API dependency** | If API is down during judging, module breaks |
+| **Latency** | Each call adds 2-5 seconds |
+| **"Outsourcing" perception** | Judges may see it as delegating reasoning to a third-party LLM |
+| **Rate limits** | Free tier may throttle during demo day |
+
+### Recommended Hybrid Architecture
+
+Use local methods as primary (works offline for judges), Gemini as optional enhancement:
+
+| Module | Primary (Local, No API) | Secondary (Gemini, Optional) |
+|---|---|---|
+| **A** | Grad-CAM + local heuristics (edge density, smoothness in activated regions) | Gemini describes high-activation regions for richer text |
+| **E** | CLIP similarity score (fast, offline, reliable) | Gemini for detailed mismatch explanation when CLIP flags low similarity |
+
+### Alternative: Gemma (Local, No API Key)
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+model = AutoModelForCausalLM.from_pretrained("google/gemma-3-4b-it")
+```
+
+- **Pros:** Offline, free, no rate limits, fully reproducible without API key
+- **Cons:** ~8GB RAM, slower, less capable than hosted Gemini
+- **Verdict:** Good fallback; CLIP is simpler for Module E
