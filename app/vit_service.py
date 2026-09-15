@@ -344,7 +344,13 @@ def analyze_image(
     stability_score = "HIGH"
     try:
         from app.explain_service import check_explanation_stability
-        stability_score = check_explanation_stability(model, tensor_input)
+        target_idx = 0 if fake_prob >= 0.5 else 1
+        stability_score = check_explanation_stability(
+            model,
+            tensor_input,
+            original_saliency=raw_saliency if 'raw_saliency' in locals() else None,
+            target_class=target_idx
+        )
     except Exception:
         stability_score = "MODERATE"
 

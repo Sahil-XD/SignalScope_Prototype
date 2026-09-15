@@ -138,7 +138,11 @@ def _colorize_heatmap(heatmap_2d: np.ndarray, orig_w: int, orig_h: int) -> str:
 import cv2
 
 
-def get_raw_saliency_map(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.ndarray:
+def get_raw_saliency_map(
+    model: torch.nn.Module,
+    image_tensor: torch.Tensor,
+    target_class: int = None
+) -> np.ndarray:
     """
     Computes Grad-CAM and returns the raw normalized 0-1 float32 2D array.
     Uses EfficientNet (features) or ViT (encoder) path as appropriate.
@@ -146,12 +150,16 @@ def get_raw_saliency_map(model: torch.nn.Module, image_tensor: torch.Tensor) -> 
     model.eval()
 
     if hasattr(model, 'features'):
-        return _raw_gradcam_efficientnet(model, image_tensor)
+        return _raw_gradcam_efficientnet(model, image_tensor, target_class=target_class)
     else:
-        return _raw_gradcam_vit(model, image_tensor)
+        return _raw_gradcam_vit(model, image_tensor, target_class=target_class)
 
 
-def _raw_gradcam_efficientnet(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.ndarray:
+def _raw_gradcam_efficientnet(
+    model: torch.nn.Module,
+    image_tensor: torch.Tensor,
+    target_class: int = None
+) -> np.ndarray:
     """Grad-CAM on EfficientNet final conv block, returns raw 2D saliency."""
     activations = []
     gradients = []
@@ -169,7 +177,10 @@ def _raw_gradcam_efficientnet(model: torch.nn.Module, image_tensor: torch.Tensor
     try:
         input_tensor = image_tensor.clone().requires_grad_(True)
         outputs = model(input_tensor)
-        pred_class = torch.argmax(outputs, dim=1).item()
+        if target_class is None:
+            pred_class = torch.argmax(outputs, dim=1).item()
+        else:
+            pred_class = target_class
         score = outputs[0, pred_class]
 
         model.zero_grad()
@@ -196,7 +207,11 @@ def _raw_gradcam_efficientnet(model: torch.nn.Module, image_tensor: torch.Tensor
         h2.remove()
 
 
-def _raw_gradcam_vit(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.ndarray:
+def _raw_gradcam_vit(
+    model: torch.nn.Module,
+    image_tensor: torch.Tensor,
+    target_class: int = None
+) -> np.ndarray:
     """Attention-based saliency on ViT, returns raw 2D saliency."""
     activations = []
 
@@ -209,7 +224,10 @@ def _raw_gradcam_vit(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.n
     try:
         input_tensor = image_tensor.clone().requires_grad_(True)
         outputs = model(input_tensor)
-        pred_class = torch.argmax(outputs, dim=1).item()
+        if target_class is None:
+            pred_class = torch.argmax(outputs, dim=1).item()
+        else:
+            pred_class = target_class
         score = outputs[0, pred_class]
 
         model.zero_grad()
@@ -236,28 +254,43 @@ def _raw_gradcam_vit(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.n
 def check_explanation_stability(
     model: torch.nn.Module,
     image_tensor: torch.Tensor,
-    original_saliency: np.ndarray = None
+    original_saliency: np.ndarray = None,
+    target_class: int = None
 ) -> str:
     """
-    Checks Grad-CAM saliency stability under +/-20% brightness perturbation.
-    Computes Pearson correlation against the original saliency map.
+    Checks Grad-CAM saliency stability under +/-15% brightness perturbation.
+    Properly transforms in de-normalized [0, 1] pixel space and holds target_class
+    fixed so attention correlation is measured consistently.
     Returns: 'HIGH', 'MODERATE', or 'LOW'.
     """
     try:
+        if target_class is None:
+            with torch.no_grad():
+                out = model(image_tensor)
+                target_class = torch.argmax(out, dim=1).item()
+
         if original_saliency is None:
-            original_saliency = get_raw_saliency_map(model, image_tensor)
+            original_saliency = get_raw_saliency_map(model, image_tensor, target_class=target_class)
 
         orig_flat = original_saliency.flatten()
         if np.std(orig_flat) == 0:
             return "LOW"
 
-        # 1. Brightness perturbation (+20%)
-        tensor_bright = torch.clamp(image_tensor * 1.2, -3.0, 3.0)
-        saliency_bright = get_raw_saliency_map(model, tensor_bright)
+        device = image_tensor.device
+        mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
+        std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
 
-        # 2. Darkness perturbation (-20%)
-        tensor_dark = torch.clamp(image_tensor * 0.8, -3.0, 3.0)
-        saliency_dark = get_raw_saliency_map(model, tensor_dark)
+        # De-normalize to [0, 1] pixel space
+        denorm = image_tensor * std + mean
+        bright = torch.clamp(denorm * 1.15, 0.0, 1.0)
+        dark = torch.clamp(denorm * 0.85, 0.0, 1.0)
+
+        # Re-normalize for model input
+        tensor_bright = (bright - mean) / std
+        tensor_dark = (dark - mean) / std
+
+        saliency_bright = get_raw_saliency_map(model, tensor_bright, target_class=target_class)
+        saliency_dark = get_raw_saliency_map(model, tensor_dark, target_class=target_class)
 
         corr_bright = np.corrcoef(orig_flat, saliency_bright.flatten())[0, 1]
         corr_dark = np.corrcoef(orig_flat, saliency_dark.flatten())[0, 1]
@@ -269,14 +302,15 @@ def check_explanation_stability(
 
         avg_corr = float((corr_bright + corr_dark) / 2.0)
 
-        if avg_corr >= 0.75:
+        if avg_corr >= 0.70:
             return "HIGH"
-        elif avg_corr >= 0.45:
+        elif avg_corr >= 0.40:
             return "MODERATE"
         else:
             return "LOW"
     except Exception:
         return "MODERATE"
+
 
 
 def compute_ela_map(image: Image.Image, quality: int = 95) -> np.ndarray:

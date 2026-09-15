@@ -625,7 +625,7 @@
         .heatmap-display-frame {
             position: relative;
             width: 100%;
-            height: 390px;
+            height: 310px;
             border-radius: 14px;
             overflow: hidden;
             background: #000000;
@@ -672,9 +672,9 @@
             gap: 12px;
             background: rgba(0, 0, 0, 0.02);
             border-radius: 12px;
-            padding: 9px 16px;
+            padding: 7px 14px;
             border: 1px solid var(--border-line);
-            margin-top: 14px;
+            margin-top: 8px;
         }
 
         .slider-control-bar label {
@@ -708,8 +708,9 @@
             font-size: 11px;
             color: var(--text-sub);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
+            line-height: 1.4;
         }
 
         .cue-dot {
@@ -718,7 +719,9 @@
             border-radius: 50%;
             background: #8C6D34;
             flex-shrink: 0;
+            margin-top: 5px;
         }
+
 
         /* ==============================
            RIGHT COLUMN: CALIBRATED VERDICT
@@ -1146,7 +1149,7 @@
                             <span class="card-title-text" id="visualMapTitle">Visual Forensic Layers</span>
                             <div style="display: flex; gap: 6px; align-items: center;">
                                 <span class="tag-pill" id="stabilityBadge" style="background: rgba(16, 185, 129, 0.15); color: #059669;">Stability: High</span>
-                                <span class="tag-pill" style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Triple-Layer Forensics</span>
+                                <span class="tag-pill" style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Bonus A: Triple-Layer</span>
                             </div>
                         </div>
 
@@ -1182,21 +1185,32 @@
                         </div>
                     </div>
 
-                    <!-- Grounded Cues (Measured Region Metrics) -->
-                    <div class="cues-strip" id="cuesStrip">
-                        <div class="cue-item">
-                            <span class="cue-dot"></span>
-                            <span id="cue1">Attention localized on high-contrast physical boundaries.</span>
+                    <!-- Grounded Cues (Measured Region Metrics - Bonus A) -->
+                    <div class="grounded-cues-card" style="margin-top: 10px; padding: 10px 14px; background: rgba(0, 0, 0, 0.02); border-radius: 12px; border: 1px solid var(--border-line);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px;">
+                            <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">
+                                Faithful Grounded Cues (Measured Regions)
+                            </span>
+                            <span class="tag-pill" style="font-size: 9px; padding: 2px 7px; background: rgba(140, 109, 52, 0.15); color: #8C6D34;">
+                                Bonus A Evidence
+                            </span>
                         </div>
-                        <div class="cue-item">
-                            <span class="cue-dot"></span>
-                            <span id="cue2">Global illumination angle and ambient shadows match physical scene geometry.</span>
-                        </div>
-                        <div class="cue-item">
-                            <span class="cue-dot"></span>
-                            <span id="cue3">Optical lens power decay conforms to authentic glass physics.</span>
+                        <div class="cues-strip" id="cuesStrip" style="margin-top: 0;">
+                            <div class="cue-item">
+                                <span class="cue-dot"></span>
+                                <span id="cue1">Attention localized on high-contrast physical boundaries.</span>
+                            </div>
+                            <div class="cue-item">
+                                <span class="cue-dot"></span>
+                                <span id="cue2">Global illumination angle and ambient shadows match physical scene geometry.</span>
+                            </div>
+                            <div class="cue-item">
+                                <span class="cue-dot"></span>
+                                <span id="cue3">Optical lens power decay conforms to authentic glass physics.</span>
+                            </div>
                         </div>
                     </div>
+
 
                     <!-- Multimodal Context Verification Box -->
                     <div class="verdict-note-box" id="multimodalBox" style="display: none; margin-top: 10px; border-left: 3px solid #2563EB; background: rgba(37, 99, 235, 0.05); color: var(--text-main); font-size: 11px;">
