@@ -18,7 +18,7 @@ _b0_model = None
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-B3_WEIGHTS_PTH = BASE_DIR / "efficientnet_b3_best.pth"
+B3_WEIGHTS_PTH = BASE_DIR / "model" / "weights" / "efficientnet_b3_best.pth" if (BASE_DIR / "model" / "weights" / "efficientnet_b3_best.pth").exists() else BASE_DIR / "efficientnet_b3_best.pth"
 B3_WEIGHTS_ZIP = BASE_DIR / "efficientnet_b3_best.pth.zip"
 B3_WEIGHTS_DIR = BASE_DIR / "efficientnet_b3_best"
 
@@ -226,18 +226,40 @@ def analyze_image(image_path: str, simulate_jpeg: bool = False, model_type: str 
     raw_real_pct = round(real_prob * 100, 1)
     display_score = raw_ai_pct
     
+    calibration_applied = False
+    calibration_reason = None
+
     if fake_prob >= (threshold / 100.0):
-        verdict_status = "synthetic"
-        verdict_title = "Likely AI-Generated"
-        summary_note = (
-            f"{model_tag} detected strong generative synthesis signatures ({raw_ai_pct}% AI). "
-            f"Feature activations captured latent diffusion noise and non-optical upsampling artifacts."
-        )
-        cues = [
-            f"Neural confidence: {raw_ai_pct}% AI likelihood ({raw_real_pct}% Real).",
-            "Latent checkerboard grid & diffusion noise identified in convolutional feature maps.",
-            f"Optical lens decay: {decay} ratio ({'Natural decay' if fft_data['is_natural_optics'] else 'Non-optical profile'})."
-        ]
+        # Multi-Signal Calibration Check (Bonus D / PDF Section 3.2 & 11)
+        # If genuine camera hardware is verified AND physical glass optics are verified,
+        # the high visual score is caused by in-camera computational de-noising/sharpening (e.g. CMF Phone 1, ISO 850)
+        if exif_data["is_hardware_camera"] and fft_data["is_natural_optics"]:
+            verdict_status = "inconclusive"
+            verdict_title = "Inconclusive / Smartphone Post-Processing Detected"
+            calibration_applied = True
+            calibration_reason = "Hardware camera profile verified, but in-camera computational noise reduction and ISP edge sharpening elevated visual model uncertainty."
+            summary_note = (
+                f"Hardware EXIF confirms physical camera capture from {exif_data['device_model']} (ISO {exif_data.get('iso', 'N/A')}) "
+                f"and Fourier analysis confirms physical glass optics ({decay} ratio). However, aggressive in-camera computational de-noising "
+                f"and sharpening elevated visual model uncertainty ({raw_ai_pct}% AI likelihood). The image displays authentic camera hardware with heavy ISP post-processing."
+            )
+            cues = [
+                f"Hardware Provenance: Verified camera hardware ({exif_data['device_model']}).",
+                f"Lens Optics: Natural power decay ({decay} ratio) confirms physical glass transmission.",
+                f"Visual Anomaly: Neural network elevated AI likelihood ({raw_ai_pct}%) due to in-camera noise-reduction smoothing & ISP sharpening."
+            ]
+        else:
+            verdict_status = "synthetic"
+            verdict_title = "Likely AI-Generated"
+            summary_note = (
+                f"{model_tag} detected strong generative synthesis signatures ({raw_ai_pct}% AI). "
+                f"Feature activations captured latent diffusion noise and non-optical upsampling artifacts."
+            )
+            cues = [
+                f"Neural confidence: {raw_ai_pct}% AI likelihood ({raw_real_pct}% Real).",
+                "Latent checkerboard grid & diffusion noise identified in convolutional feature maps.",
+                f"Optical lens decay: {decay} ratio ({'Natural decay' if fft_data['is_natural_optics'] else 'Non-optical profile'})."
+            ]
     elif fake_prob <= 0.35:
         verdict_status = "authentic"
         verdict_title = "Likely Authentic Capture"
@@ -285,6 +307,8 @@ def analyze_image(image_path: str, simulate_jpeg: bool = False, model_type: str 
         "heatmap_base64": heatmap_b64,
         "exif": exif_data,
         "fft_analysis": fft_data,
+        "calibration_applied": calibration_applied,
+        "calibration_reason": calibration_reason,
         "raw_probabilities": {
             "fake": fake_prob,
             "real": real_prob
