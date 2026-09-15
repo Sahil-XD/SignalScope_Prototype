@@ -48,6 +48,7 @@ def health():
     }
 
 @app.post("/api/analyze")
+@app.post("/predict")
 async def analyze_endpoint(
     file: UploadFile = File(...),
     simulate_jpeg: bool = Form(False),

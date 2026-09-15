@@ -53,18 +53,26 @@ def main():
         print(f"[ERROR] Image path does not exist: {img_path}", file=sys.stderr)
         sys.exit(1)
 
+    import contextlib
+
     # Run inference and multi-signal forensic pipeline
+    if args.json:
+        with contextlib.redirect_stdout(sys.stderr):
+            result = analyze_image(
+                str(img_path),
+                simulate_jpeg=args.jpeg_stress,
+                model_type=args.model
+            )
+        # Exclude large base64 heatmap from raw console JSON if desired
+        out = {k: v for k, v in result.items() if k != "heatmap_base64"}
+        print(json.dumps(out, indent=2))
+        return
+
     result = analyze_image(
         str(img_path),
         simulate_jpeg=args.jpeg_stress,
         model_type=args.model
     )
-
-    if args.json:
-        # Exclude large base64 heatmap from raw console JSON if desired
-        out = {k: v for k, v in result.items() if k != "heatmap_base64"}
-        print(json.dumps(out, indent=2))
-        return
 
     # Clean, human-readable terminal output for evaluators
     print("\n" + "=" * 60)
