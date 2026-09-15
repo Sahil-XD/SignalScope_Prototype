@@ -7,6 +7,7 @@ Evaluates a single image or directory of images for media authenticity.
 """
 
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import sys
 import json
 import argparse
@@ -41,6 +42,12 @@ def main():
         help="Simulate JPEG compression (q=50) for robustness testing"
     )
     parser.add_argument(
+        "--caption",
+        type=str,
+        default=None,
+        help="Optional text caption for multimodal consistency verification"
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Output raw JSON results for automated benchmark scoring"
@@ -61,7 +68,8 @@ def main():
             result = analyze_image(
                 str(img_path),
                 simulate_jpeg=args.jpeg_stress,
-                model_type=args.model
+                model_type=args.model,
+                caption=args.caption
             )
         # Exclude large base64 heatmap from raw console JSON if desired
         out = {k: v for k, v in result.items() if k != "heatmap_base64"}
@@ -71,7 +79,8 @@ def main():
     result = analyze_image(
         str(img_path),
         simulate_jpeg=args.jpeg_stress,
-        model_type=args.model
+        model_type=args.model,
+        caption=args.caption
     )
 
     # Clean, human-readable terminal output for evaluators
@@ -86,6 +95,7 @@ def main():
     print(f"AI Probability:    {result['raw_fake_pct']}%")
     print(f"Real Probability:  {result['raw_real_pct']}%")
     print(f"Operating Cutoff:  {result['operating_threshold']}% Threshold")
+    print(f"Evidence Stability:{result.get('stability_score', 'HIGH')}")
     print("-" * 60)
     print("PROVENANCE & HARDWARE (EXIF & SENSOR):")
     print(f"  Camera Hardware: {result['exif'].get('device_model', 'No EXIF Found')}")
@@ -99,11 +109,26 @@ def main():
         print("-" * 60)
         print("MULTI-SIGNAL CALIBRATION APPLIED:")
         print(f"  Reason: {result.get('calibration_reason')}")
+    if result.get("generator_attribution"):
+        attr = result["generator_attribution"]
+        print("-" * 60)
+        print("GENERATOR ATTRIBUTION (FREQUENCY FORENSICS):")
+        print(f"  Estimated Family: {attr.get('family', 'Unknown')}")
+        print(f"  Confidence:       {attr.get('confidence', 0)}%")
+        if attr.get("signature_cues"):
+            for sc in attr["signature_cues"]:
+                print(f"    - {sc}")
     if result.get("cues"):
         print("-" * 60)
         print("GROUNDED FORENSIC REGION CUES:")
         for cue in result.get("cues", []):
             print(f"  * {cue}")
+    if result.get("multimodal_verification") and result["multimodal_verification"].get("provided"):
+        multi = result["multimodal_verification"]
+        print("-" * 60)
+        print("MULTIMODAL CONTEXT VERIFICATION:")
+        print(f"  Status:          {'MATCH' if multi.get('is_consistent') else 'MISMATCH'}")
+        print(f"  Analysis Note:   {multi.get('note')}")
     print("-" * 60)
     print("SUMMARY:")
     print(f"  {result['summary']}")

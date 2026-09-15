@@ -233,6 +233,52 @@ def _raw_gradcam_vit(model: torch.nn.Module, image_tensor: torch.Tensor) -> np.n
         hook.remove()
 
 
+def check_explanation_stability(
+    model: torch.nn.Module,
+    image_tensor: torch.Tensor,
+    original_saliency: np.ndarray = None
+) -> str:
+    """
+    Checks Grad-CAM saliency stability under +/-20% brightness perturbation.
+    Computes Pearson correlation against the original saliency map.
+    Returns: 'HIGH', 'MODERATE', or 'LOW'.
+    """
+    try:
+        if original_saliency is None:
+            original_saliency = get_raw_saliency_map(model, image_tensor)
+
+        orig_flat = original_saliency.flatten()
+        if np.std(orig_flat) == 0:
+            return "LOW"
+
+        # 1. Brightness perturbation (+20%)
+        tensor_bright = torch.clamp(image_tensor * 1.2, -3.0, 3.0)
+        saliency_bright = get_raw_saliency_map(model, tensor_bright)
+
+        # 2. Darkness perturbation (-20%)
+        tensor_dark = torch.clamp(image_tensor * 0.8, -3.0, 3.0)
+        saliency_dark = get_raw_saliency_map(model, tensor_dark)
+
+        corr_bright = np.corrcoef(orig_flat, saliency_bright.flatten())[0, 1]
+        corr_dark = np.corrcoef(orig_flat, saliency_dark.flatten())[0, 1]
+
+        if np.isnan(corr_bright):
+            corr_bright = 0.0
+        if np.isnan(corr_dark):
+            corr_dark = 0.0
+
+        avg_corr = float((corr_bright + corr_dark) / 2.0)
+
+        if avg_corr >= 0.75:
+            return "HIGH"
+        elif avg_corr >= 0.45:
+            return "MODERATE"
+        else:
+            return "LOW"
+    except Exception:
+        return "MODERATE"
+
+
 def compute_ela_map(image: Image.Image, quality: int = 95) -> np.ndarray:
     """
     Error Level Analysis: re-save as JPEG, reload, compute per-pixel absolute

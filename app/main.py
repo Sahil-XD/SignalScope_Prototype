@@ -52,7 +52,8 @@ def health():
 async def analyze_endpoint(
     file: UploadFile = File(...),
     simulate_jpeg: bool = Form(False),
-    model_type: str = Form("efficientnet_b3")
+    model_type: str = Form("efficientnet_b3"),
+    caption: str = Form(None)
 ):
     try:
         # Save temporary uploaded file
@@ -63,7 +64,7 @@ async def analyze_endpoint(
 
         try:
             # Run multi-signal forensic evaluation pipeline
-            results = analyze_image(tmp_path, simulate_jpeg=simulate_jpeg, model_type=model_type)
+            results = analyze_image(tmp_path, simulate_jpeg=simulate_jpeg, model_type=model_type, caption=caption)
             results["filename"] = file.filename
             return JSONResponse(content=results)
         finally:

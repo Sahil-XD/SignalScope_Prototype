@@ -1031,6 +1031,11 @@
                 <input type="file" id="fileInput" accept="image/*">
             </div>
 
+            <!-- Optional Multimodal Caption Input -->
+            <div class="caption-input-box" style="margin-top: 14px; width: 100%; max-width: 540px; display: flex; align-items: center; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-line); border-radius: 24px; padding: 6px 16px;">
+                <input type="text" id="captionInput" placeholder="Optional: Enter context caption to verify image-text consistency..." style="flex: 1; border: none; background: transparent; color: var(--text-main); font-size: 12px; outline: none; font-family: inherit;">
+                <span style="font-size: 10px; font-weight: 600; color: var(--text-sub); text-transform: uppercase;">Multimodal</span>
+            </div>
 
             <div id="loadingSpinner">
                 <span class="pulse-dot"></span>
@@ -1076,6 +1081,16 @@
                             <div class="exif-row"><span class="exif-k">Power Decay</span><span class="exif-v" id="fftDecay">0.274 (Natural)</span></div>
                             <div class="exif-row"><span class="exif-k">Lens Optics</span><span class="exif-v" id="fftOptics">Physical Glass Passed</span></div>
                             <div class="exif-row"><span class="exif-k">Synthetic Grid</span><span class="exif-v" id="fftGrid">None Detected</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Generator Attribution (Bonus B) -->
+                    <div class="info-group">
+                        <div class="group-label">Generator Attribution (Spectral)</div>
+                        <div class="exif-list">
+                            <div class="exif-row"><span class="exif-k">Family</span><span class="exif-v" id="attrFamily" style="font-weight: 700; color: #8C6D34;">Optical Camera</span></div>
+                            <div class="exif-row"><span class="exif-k">Confidence</span><span class="exif-v" id="attrConfidence">--%</span></div>
+                            <div class="exif-row" style="display: block; padding-top: 4px;"><span class="exif-k" style="display: block; margin-bottom: 2px;">Cues</span><span class="exif-v" id="attrCues" style="font-size: 10px; line-height: 1.3; color: var(--text-sub);">Natural 1/f spectral rolloff</span></div>
                         </div>
                     </div>
 
@@ -1129,8 +1144,10 @@
                     <div>
                         <div class="card-header-line">
                             <span class="card-title-text" id="visualMapTitle">Visual Forensic Layers</span>
-                            <span class="tag-pill"
-                                style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Triple-Layer Forensics</span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span class="tag-pill" id="stabilityBadge" style="background: rgba(16, 185, 129, 0.15); color: #059669;">Stability: High</span>
+                                <span class="tag-pill" style="background: rgba(140, 109, 52, 0.15); color: #8C6D34;">Triple-Layer Forensics</span>
+                            </div>
                         </div>
 
                         <!-- Multi-Layer Forensic Tab Switcher -->
@@ -1179,6 +1196,11 @@
                             <span class="cue-dot"></span>
                             <span id="cue3">Optical lens power decay conforms to authentic glass physics.</span>
                         </div>
+                    </div>
+
+                    <!-- Multimodal Context Verification Box -->
+                    <div class="verdict-note-box" id="multimodalBox" style="display: none; margin-top: 10px; border-left: 3px solid #2563EB; background: rgba(37, 99, 235, 0.05); color: var(--text-main); font-size: 11px;">
+                        <strong style="color: #2563EB;">Multimodal Verification:</strong> <span id="multimodalNote">--</span>
                     </div>
                 </section>
 
@@ -1470,6 +1492,45 @@
                 document.getElementById('fftGrid').innerText = fft.grid_artifact_detected ? 'Latent Grid Detected' : 'None Detected';
             }
 
+            // Saliency Stability Badge (Bonus A Rubric)
+            const stabBadge = document.getElementById('stabilityBadge');
+            if (stabBadge && data.stability_score) {
+                stabBadge.innerText = 'Stability: ' + data.stability_score;
+                if (data.stability_score === 'HIGH') {
+                    stabBadge.style.color = '#059669';
+                    stabBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+                } else if (data.stability_score === 'MODERATE') {
+                    stabBadge.style.color = '#D97706';
+                    stabBadge.style.background = 'rgba(217, 119, 6, 0.15)';
+                } else {
+                    stabBadge.style.color = '#DC2626';
+                    stabBadge.style.background = 'rgba(220, 38, 38, 0.15)';
+                }
+            }
+
+            // Generator Attribution (Bonus B)
+            if (data.generator_attribution) {
+                const attr = data.generator_attribution;
+                const famEl = document.getElementById('attrFamily');
+                const confEl = document.getElementById('attrConfidence');
+                const cuesEl = document.getElementById('attrCues');
+                if (famEl) famEl.innerText = attr.family || 'Optical Camera';
+                if (confEl) confEl.innerText = (attr.confidence || 0) + '%';
+                if (cuesEl && attr.signature_cues && attr.signature_cues.length > 0) {
+                    cuesEl.innerText = attr.signature_cues[0];
+                }
+            }
+
+            // Multimodal Verification Alert (Bonus E)
+            const multiBox = document.getElementById('multimodalBox');
+            const multiNote = document.getElementById('multimodalNote');
+            if (multiBox && data.multimodal_verification && data.multimodal_verification.provided) {
+                multiBox.style.display = 'block';
+                if (multiNote) multiNote.innerText = data.multimodal_verification.note;
+            } else if (multiBox) {
+                multiBox.style.display = 'none';
+            }
+
             showResults();
         }
 
@@ -1494,6 +1555,12 @@
             formData.append('model_type', 'efficientnet_b3');
             const simJpeg = document.getElementById('toggleJpeg');
             formData.append('simulate_jpeg', simJpeg ? simJpeg.checked : false);
+
+            const captionInput = document.getElementById('captionInput');
+            const caption = captionInput ? captionInput.value.trim() : '';
+            if (caption) {
+                formData.append('caption', caption);
+            }
 
             try {
                 const response = await fetch('/api/analyze', {
