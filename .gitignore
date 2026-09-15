@@ -26,3 +26,7 @@ Thumbs.db
 .idea/
 .history/
 *.log
+%USERPROFILE%/
+%USERPROFILE%*
+.claude*
+.env
